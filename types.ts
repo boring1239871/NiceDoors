@@ -114,6 +114,7 @@ export interface Order {
 export interface UserProfile {
   name: string;
   email: string;
+  phone?: string; // Added phone field
   avatar: string;
   role: 'Designer' | 'Admin';
   company: string;
