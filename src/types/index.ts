@@ -83,6 +83,24 @@ export interface Customer {
   createdAt: string;
 }
 
+// --- Customer Create Request ---
+export interface CustomerCreate {
+  name: string;
+  phone: string;
+  address?: string;
+  remark?: string;
+  createdAt?: string;
+}
+
+// --- Customer Update Request ---
+export interface CustomerUpdate {
+  name?: string;
+  phone?: string;
+  address?: string;
+  remark?: string;
+  createdAt?: string;
+}
+
 // --- Order System Types ---
 export interface OrderItem {
   id: string;
@@ -100,11 +118,40 @@ export interface OrderItem {
 export interface Order {
   id: string;
   customerName: string;
-  customerPhone?: string;
+  customerPhone: string;
+  address: string;
+  date: string;
+  items: OrderItem[];
+  totalAmount: number;
+  paidAmount: number;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+  orderNo?: string;
+  balance?: number;
+  note?: string;
+}
+
+// --- Order Create Request ---
+export interface OrderCreate {
+  customerName: string;
+  customerPhone: string;
   address?: string;
   date: string;
   items: OrderItem[];
   totalAmount: number;
+  paidAmount: number;
+  status: string;
+}
+
+// --- Order Update Request ---
+export interface OrderUpdate {
+  customerName?: string;
+  customerPhone?: string;
+  address?: string;
+  date?: string;
+  items?: OrderItem[];
+  totalAmount?: number;
   paidAmount?: number;
   status?: string;
 }
@@ -114,11 +161,12 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  avatar?: string | null;
-  role: string;
-  company: string;
-  plan: string;
+}
+
+// --- User Update Request ---
+export interface UserUpdate {
+  name?: string;
+  email?: string;
 }
 
 // --- API Response Types ---
@@ -128,10 +176,22 @@ export interface ApiResponse<T = any> {
   message: string;
 }
 
+// --- Token Response ---
+export interface TokenResponse {
+  accessToken: string;
+  tokenType: string;
+  refreshToken: string;
+}
+
 // --- 登录响应类型 ---
 export interface LoginResponse {
   accessToken: string;
   tokenType: string;
   refreshToken: string;
-  user: UserProfile;
 }
+
+// --- Refresh Token Request ---
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+

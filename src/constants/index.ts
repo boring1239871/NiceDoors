@@ -6,6 +6,17 @@ export const GLASS_PADDING = 5; // mm
 
 const DEFAULT_THUMBNAIL = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzQ3NTU2OSIgc3Ryb2tlLXdpZHRoPSIxIj48cmVjdCB4PSIzIiB5PSIzIiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHJ4PSIyIiBmaWxsPSIjZjFmNWY5Ii8+PHBhdGggZD0iTTMgMTJoMThNMTIgM3YxOCIgc3Ryb2tlPSIjOTRhM2I4Ii8+PHBhdGggZD0iTTUgNWg1djVINXpNMTQgNWg1djVIMTR6TTUgMTRoNXY1SDV6TTE0IDE0aDV2NUgxNHoiIGZpbGw9IiNlMmU4ZjAiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==`;
 
+export const ROUTES = {
+  LOGIN: '/login',
+  OVERVIEW: '/overview',
+  ORDERS: '/orders',
+  PRODUCTS: '/products',
+  EDITOR: '/editor',
+  DESIGNER: '/designer',
+  CUSTOMERS: '/customers',
+  PROFILE: '/profile',
+};
+
 export const PRODUCT_TEMPLATES: ProductTemplate[] = [
   // ======================
   // 窗类 (Windows)

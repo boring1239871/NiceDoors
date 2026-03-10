@@ -6,12 +6,26 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isLoading }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('alex@proframe.design');
+  const [password, setPassword] = useState('ChangeMe123!');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 表单验证
+    if (!email.trim()) {
+      setError('请输入注册所用的邮箱');
+      return;
+    }
+
+    if (!password) {
+      setError('请输入密码');
+      return;
+    }
+
+    setError('');
     onLogin(email.trim(), password);
   };
 
@@ -27,12 +41,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isLoading }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+          {error && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600 font-medium">
+              {error}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 pl-1">邮箱</label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError('');
+              }}
+              placeholder="alex@proframe.design"
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all text-gray-700 font-medium text-sm md:text-base"
             />
           </div>
@@ -42,7 +65,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isLoading }) => {
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError('');
+                }}
+                placeholder="ChangeMe123!"
                 className="w-full px-4 py-3 pr-10 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-slate-500/20 focus:border-slate-500 transition-all text-gray-700 font-medium text-sm md:text-base"
               />
               <button

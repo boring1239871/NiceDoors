@@ -5,14 +5,9 @@ import { printOrderContract, printOrderDrawings, generateBatchExportZip } from '
 import { useFeedback } from '../common/FeedbackContext';
 import { createPortal } from 'react-dom';
 import { Icons } from '../common/Icons';
+import { fetchOrderList, deleteOrder, fetchUserProfile } from '../../api/api';
+import { useNavigate } from 'react-router-dom';
 
-interface OrderListViewProps {
-    orders: Order[];
-    user: UserProfile;
-    onEditOrder: (order: Order) => void;
-    onDeleteOrder: (orderId: string) => void;
-    onCreateNewOrder: () => void;
-}
 
 // 批量导出预览弹窗组件
 const BatchExportPreviewModal = ({ selectedOrders, user, onCancel, onConfirm }: any) => {
@@ -66,7 +61,7 @@ const BatchExportPreviewModal = ({ selectedOrders, user, onCancel, onConfirm }: 
     );
 };
 
-export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEditOrder, onDeleteOrder, onCreateNewOrder }) => {
+export const OrderListView: React.FC = () => {
     const { toast, confirm } = useFeedback();
     const [isMobile, setIsMobile] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +70,10 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [showCheckboxes, setShowCheckboxes] = useState(false);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [user, setUser] = useState<UserProfile>({ name: '', email: '', avatar: '', role: 'Designer', company: '', plan: 'Free' });
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
 
     // 检测移动端
     useEffect(() => {
@@ -85,6 +84,35 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // 加载数据
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                // 并行请求订单和用户数据
+                const [ordersRes, userRes] = await Promise.all([
+                    fetchOrderList(),
+                    fetchUserProfile()
+                ]);
+
+                if (ordersRes.code === 200) {
+                    setOrders(ordersRes.data);
+                }
+
+                if (userRes.code === 200) {
+                    setUser(userRes.data);
+                }
+            } catch (error) {
+                console.error('Failed to load order list data:', error);
+                toast.error('数据加载失败');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, [toast]);
 
     const statusOptions = ['ALL', '已确认', '生产中', '生产完成', '已结清'];
 
@@ -133,6 +161,31 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
         }
     }, [selectedIds.size]);
 
+    // 处理编辑订单
+    const handleEditOrder = (order: Order) => {
+        // 导航到编辑器页面，将订单数据存储在localStorage中
+        localStorage.setItem('editOrder', JSON.stringify(order));
+        navigate('/editor');
+    };
+
+    // 处理删除订单
+    const handleDeleteOrder = async (orderId: number) => {
+        try {
+            await deleteOrder(orderId);
+            setOrders(prevOrders => prevOrders.filter(o => o.id !== orderId));
+            toast.success('订单已删除');
+        } catch (e) {
+            toast.error("删除订单失败");
+        }
+    };
+
+    // 处理创建新订单
+    const handleCreateNewOrder = () => {
+        // 清除之前的编辑订单数据
+        localStorage.removeItem('editOrder');
+        navigate('/editor');
+    };
+
     const handleBatchDeleteClick = async () => {
         if (selectedIds.size === 0) return;
 
@@ -144,9 +197,15 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
         });
 
         if (confirmed) {
-            selectedIds.forEach(id => onDeleteOrder(id));
-            setSelectedIds(new Set());
-            toast.success(`已成功删除 ${selectedIds.size} 个订单`);
+            try {
+                // 并行删除所有选中的订单
+                await Promise.all(Array.from(selectedIds).map(id => deleteOrder(Number(id))));
+                setOrders(prevOrders => prevOrders.filter(o => !selectedIds.has(o.id)));
+                setSelectedIds(new Set());
+                toast.success(`已成功删除 ${selectedIds.size} 个订单`);
+            } catch (e) {
+                toast.error("批量删除订单失败");
+            }
         }
     };
 
@@ -215,7 +274,7 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
                         <div className="flex items-center justify-between mb-4">
                             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">订单</h1>
                             <button
-                                onClick={onCreateNewOrder}
+                                onClick={handleCreateNewOrder}
                                 className="w-10 h-10 bg-blue-500 text-white rounded-xl flex items-center justify-center active:bg-blue-600 transition-colors"
                             >
                                 <Icons.Plus className="w-5 h-5" />
@@ -402,7 +461,7 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
                                                     图纸
                                                 </button>
                                                 <button
-                                                    onClick={() => onEditOrder(order)}
+                                                    onClick={() => handleEditOrder(order)}
                                                     className="flex-1 py-2 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg"
                                                 >
                                                     编辑
@@ -415,7 +474,7 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
                                                             confirmText: '删除',
                                                             isDestructive: true
                                                         });
-                                                        if (confirmed) onDeleteOrder(order.id);
+                                                        if (confirmed) handleDeleteOrder(order.id);
                                                     }}
                                                     className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-red-500"
                                                 >
@@ -463,7 +522,7 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
                                 </>
                             )}
                             <button
-                                onClick={onCreateNewOrder}
+                                onClick={handleCreateNewOrder}
                                 className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium text-sm shadow-sm hover:shadow-md transition-all flex items-center gap-2"
                             >
                                 <Icons.Plus className="w-4 h-4" />
@@ -605,7 +664,7 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
                                                                 </svg>
                                                             </button>
                                                             <button
-                                                                onClick={() => onEditOrder(order)}
+                                                                onClick={() => handleEditOrder(order)}
                                                                 className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                                                                 title="编辑"
                                                             >
@@ -621,7 +680,7 @@ export const OrderListView: React.FC<OrderListViewProps> = ({ orders, user, onEd
                                                                         confirmText: '删除',
                                                                         isDestructive: true
                                                                     });
-                                                                    if (confirmed) onDeleteOrder(order.id);
+                                                                    if (confirmed) handleDeleteOrder(order.id);
                                                                 }}
                                                                 className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                                 title="删除"

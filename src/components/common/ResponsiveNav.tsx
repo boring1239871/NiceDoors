@@ -3,23 +3,22 @@
 //   - 通常包含应用的主要功能入口
 //   - 可以展开或收起以节省空间
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from './Icons';
 import { UserProfile } from '../../types';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { getAvatarInitial, getAvatarStyle } from '../../utils';
+import { fetchUserProfile } from '../../api/api';
+import { useFeedback } from './FeedbackContext';
 
 export type ViewModule = 'overview' | 'orders' | 'editor' | 'designer' | 'profile' | 'customers' | 'products';
 
 interface ResponsiveNavProps {
   activeModule: ViewModule;
   setActiveModule: (module: ViewModule) => void;
-  user: UserProfile;
   onLogout: () => void;
   isSidebarCollapsed: boolean;
   toggleCollapse: () => void;
-  onCreateNewOrder: () => void;
-  cartItemCount: number;
 }
 
 const NAV_ITEMS = [
@@ -59,21 +58,32 @@ const Avatar = ({ name, avatar, className, onClick }: { name: string; avatar: st
 export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
   activeModule,
   setActiveModule,
-  user,
   onLogout,
   isSidebarCollapsed,
-  toggleCollapse,
-  onCreateNewOrder,
-  cartItemCount
+  toggleCollapse
 }) => {
   const { isMobile, isTablet, isDesktop } = useBreakpoint();
+  const { toast } = useFeedback();
+  const [user, setUser] = useState<UserProfile>({ name: '用户', email: '', avatar: '', role: 'Designer', company: '', plan: 'Free' });
+
+  // 加载用户数据
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await fetchUserProfile();
+        if (res.code === 200) {
+          setUser(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to load user profile:', error);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const handleNavClick = (module: ViewModule) => {
-    if (module === 'editor' && cartItemCount === 0) {
-      onCreateNewOrder();
-    } else {
-      setActiveModule(module);
-    }
+    setActiveModule(module);
   };
 
   const isActive = (key: string) => {
@@ -90,7 +100,6 @@ export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
         onLogout={onLogout}
         isCollapsed={isSidebarCollapsed}
         toggleCollapse={toggleCollapse}
-        cartItemCount={cartItemCount}
         isActive={isActive}
       />
     );
@@ -106,7 +115,6 @@ export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
         onLogout={onLogout}
         isCollapsed={true}
         toggleCollapse={toggleCollapse}
-        cartItemCount={cartItemCount}
         isActive={isActive}
       />
     );
@@ -122,7 +130,6 @@ export const ResponsiveNav: React.FC<ResponsiveNavProps> = ({
       <MobileTabBar
         activeModule={activeModule}
         onNavClick={handleNavClick}
-        cartItemCount={cartItemCount}
         isActive={isActive}
       />
     </>
@@ -137,9 +144,8 @@ const DesktopSidebar: React.FC<{
   onLogout: () => void;
   isCollapsed: boolean;
   toggleCollapse: () => void;
-  cartItemCount: number;
   isActive: (k: string) => boolean;
-}> = ({ onNavClick, user, onLogout, isCollapsed, toggleCollapse, cartItemCount, isActive }) => {
+}> = ({ onNavClick, user, onLogout, isCollapsed, toggleCollapse, isActive }) => {
   const getLinkClass = (isAct: boolean) => `
     flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 select-none mb-1 mx-3 relative group
     ${isAct
@@ -184,11 +190,6 @@ const DesktopSidebar: React.FC<{
           <div key={item.key} onClick={() => onNavClick(item.key as ViewModule)} className={getLinkClass(isActive(item.key))} title={item.label}>
             <div className={getIconWrapperClass(isActive(item.key))}>{getIcon(item.icon, isActive(item.key))}</div>
             {!isCollapsed && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-            {item.key === 'editor' && cartItemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {cartItemCount}
-              </span>
-            )}
           </div>
         ))}
 
@@ -200,11 +201,6 @@ const DesktopSidebar: React.FC<{
           <div key={item.key} onClick={() => onNavClick(item.key as ViewModule)} className={getLinkClass(isActive(item.key))} title={item.label}>
             <div className={getIconWrapperClass(isActive(item.key))}>{getIcon(item.icon, isActive(item.key))}</div>
             {!isCollapsed && <span className="text-sm whitespace-nowrap">{item.label}</span>}
-            {item.key === 'editor' && cartItemCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                {cartItemCount}
-              </span>
-            )}
           </div>
         ))}
       </div>
@@ -265,15 +261,14 @@ const MobileHeader: React.FC<{
 const MobileTabBar: React.FC<{
   activeModule: ViewModule;
   onNavClick: (m: ViewModule) => void;
-  cartItemCount: number;
   isActive: (k: string) => boolean;
-}> = ({ activeModule, onNavClick, cartItemCount, isActive }) => {
+}> = ({ activeModule, onNavClick, isActive }) => {
   const tabs = [
     { key: 'overview', label: '首页', icon: 'Dashboard' },
     { key: 'orders', label: '订单', icon: 'Order' },
     { key: 'customers', label: '客户', icon: 'UserGroup' },
     { key: 'products', label: '产品', icon: 'ShoppingBag' },
-    { key: 'editor', label: '购物车', icon: 'Cart', badge: cartItemCount > 0 ? cartItemCount : undefined },
+    { key: 'editor', label: '购物车', icon: 'Cart' },
   ];
 
   return (
@@ -286,9 +281,6 @@ const MobileTabBar: React.FC<{
         >
           <div className="relative w-8 h-8 flex items-center justify-center">
             {getIcon(tab.icon, isActive(tab.key))}
-            {tab.badge && tab.badge > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold min-w-5 h-5 flex items-center justify-center rounded-full px-1 shadow-md">{tab.badge}</span>
-            )}
           </div>
           <span className="text-xs font-medium">{tab.label}</span>
         </button>

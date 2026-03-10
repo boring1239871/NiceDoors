@@ -9,12 +9,25 @@ import { calculatePrice, createDefaultModel } from '../../utils';
 interface ItemDesignerProps {
     onCancel: () => void;
     onSave: (template: any, width: number, height: number, panels: number, model: CadModel, realisticEl: HTMLElement | null, wireframeEl: HTMLElement | null) => void;
+    initialTemplateId?: string;
 }
 
-export const ItemDesigner: React.FC<ItemDesignerProps> = ({ onCancel, onSave }) => {
+export const ItemDesigner: React.FC<ItemDesignerProps> = ({ onCancel, onSave, initialTemplateId }) => {
     const [isMobile, setIsMobile] = useState(false);
     const [activeCategory, setActiveCategory] = useState<ProductType>(ProductType.WINDOW);
-    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>(initialTemplateId || '');
+
+    // 如果提供了初始模板ID，确保它被正确设置
+    useEffect(() => {
+        if (initialTemplateId) {
+            setSelectedTemplateId(initialTemplateId);
+            // 从模板中获取产品类型并设置活动分类
+            const template = PRODUCT_TEMPLATES.find(t => t.id === initialTemplateId);
+            if (template) {
+                setActiveCategory(template.type);
+            }
+        }
+    }, [initialTemplateId]);
     const [viewMode, setViewMode] = useState<ViewMode>('realistic');
     const [searchQuery, setSearchQuery] = useState('');
 

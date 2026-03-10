@@ -3,7 +3,7 @@
 //     - 通常包含 toast 消息、加载状态等功能
 //       - 使用 React Context API 实现跨组件通信
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -14,6 +14,16 @@ interface FeedbackContextType {
   toast: { success: (msg: string) => void; error: (msg: string) => void; info: (msg: string) => void; };
   confirm: (options: DialogOptions) => Promise<boolean>;
 }
+
+// 全局 toast 函数
+let globalToast: { success: (msg: string) => void; error: (msg: string) => void; info: (msg: string) => void; } | null = null;
+
+// 导出全局 toast 函数
+export const toast = {
+  success: (msg: string) => globalToast?.success(msg),
+  error: (msg: string) => globalToast?.error(msg),
+  info: (msg: string) => globalToast?.info(msg),
+};
 
 const FeedbackContext = createContext<FeedbackContextType | null>(null);
 export const useFeedback = () => {
@@ -43,6 +53,14 @@ export const FeedbackProvider: React.FC<{ children: ReactNode }> = ({ children }
     error: (msg: string) => addToast('error', msg),
     info: (msg: string) => addToast('info', msg),
   };
+
+  // 设置全局 toast 函数
+  useEffect(() => {
+    globalToast = toast;
+    return () => {
+      globalToast = null;
+    };
+  }, [toast]);
 
   const confirm = useCallback((options: DialogOptions): Promise<boolean> => {
     return new Promise((resolve) => setDialogState({ isOpen: true, options, resolve }));

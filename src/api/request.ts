@@ -1,11 +1,12 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { ApiResponse } from '../types';
+import { toast } from '../components/common/FeedbackContext';
 
 // =============================================================================
 // 配置
 // =============================================================================
-// const BASE_URL = 'http://localhost:8000'; // 开发环境
-const BASE_URL = ''; // 生产环境
+const BASE_URL = 'http://localhost:8000'; // 开发环境
+// const BASE_URL = ''; // 生产环境
 
 // =============================================================================
 // 创建 axios 实例
@@ -95,6 +96,10 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     console.log(`%c[${response.config.method?.toUpperCase()}] ${response.config.baseURL}${response.config.url} =>`, 'color: #10b981; font-weight: bold;', response.data);
+    // 成功响应时的提示
+    if (response.data && response.data.code === 200) {
+      // 可以根据需要添加成功提示，这里暂时不添加，避免过多提示
+    }
     return response;
   },
   async (error: AxiosError) => {
@@ -105,17 +110,35 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       console.log('%cToken 过期，尝试刷新...', 'color: #f59e0b; font-weight: bold;');
+      toast.info('登录状态已过期，正在尝试重新登录...');
 
       const success = await refreshToken();
       if (success) {
         // 重试原请求
         const token = getAccessToken();
         originalRequest.headers.Authorization = `Bearer ${token}`;
+        toast.success('登录状态已更新');
         return axiosInstance(originalRequest);
+      } else {
+        // Token 刷新失败，重定向到登录页
+        console.log('%cToken 刷新失败，重定向到登录页', 'color: #ef4444; font-weight: bold;');
+        toast.error('登录状态已过期，请重新登录');
+        clearTokens();
+        window.location.href = '/';
       }
     }
 
     console.error(`%c[${originalRequest.method?.toUpperCase()}] ${originalRequest.baseURL}${originalRequest.url} => ERROR:`, 'color: #ef4444; font-weight: bold;', error.message);
+
+    // 其他错误提示
+    if (error.response) {
+      const errorMessage = error.response.data?.message || '请求失败，请稍后重试';
+      toast.error(errorMessage);
+    } else if (error.request) {
+      toast.error('网络连接失败，请检查网络');
+    } else {
+      toast.error('未知错误，请稍后重试');
+    }
 
     return Promise.reject(error);
   }
@@ -135,6 +158,7 @@ const service = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>> =
       if (axiosError.response) {
         return axiosError.response.data as ApiResponse<T>;
       } else if (axiosError.request) {
+        // 网络连接失败的情况已经在响应拦截器中处理过了
         return {
           code: 500,
           message: '网络连接失败，请检查网络',
@@ -143,6 +167,7 @@ const service = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>> =
       }
     }
 
+    // 未知错误的情况已经在响应拦截器中处理过了
     return {
       code: 500,
       message: error instanceof Error ? error.message : '未知错误',

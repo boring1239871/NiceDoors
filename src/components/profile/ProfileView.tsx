@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../common/Icons';
 import { UserProfile } from '../../types';
-import { updateUserProfile } from '../../api/api';
+import { updateUserProfile, fetchUserProfile, logout } from '../../api/api';
 import { useFeedback } from '../common/FeedbackContext';
 import { useTheme } from '../common/ThemeContext';
 import { getAvatarInitial, getAvatarStyle } from '../../utils';
+import { useNavigate } from 'react-router-dom';
 
 interface ProfileViewProps {
-  user: UserProfile;
-  onLogout: () => void;
-  onUserUpdate: (user: UserProfile) => void;
+  // 不再需要从父组件接收数据
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onLogout, onUserUpdate }) => {
+export const ProfileView: React.FC<ProfileViewProps> = () => {
   const { toast } = useFeedback();
   const { theme, toggleTheme } = useTheme();
-  const [user, setUser] = useState(initialUser);
+  const [user, setUser] = useState<UserProfile>({ name: '', email: '', avatar: '', role: 'Designer', company: '', plan: 'Free' });
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -29,6 +29,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onL
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  // 加载用户数据
+  useEffect(() => {
+    const loadUser = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetchUserProfile();
+        if (res.code === 200) {
+          setUser(res.data);
+          setFormData({
+            name: res.data.name,
+            email: res.data.email,
+            phone: res.data.phone || '+86 138 0000 0000',
+            company: res.data.company
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load user profile:', error);
+        toast.error('数据加载失败');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUser();
+  }, [toast]);
+
   const avatarInitial = getAvatarInitial(user.name);
   const avatarBgClass = getAvatarStyle();
 
@@ -38,16 +64,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onL
     phone: user.phone || '+86 138 0000 0000',
     company: user.company
   });
-
-  useEffect(() => {
-    setUser(initialUser);
-    setFormData({
-      name: initialUser.name,
-      email: initialUser.email,
-      phone: initialUser.phone || '+86 138 0000 0000',
-      company: initialUser.company
-    });
-  }, [initialUser]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -60,7 +76,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onL
       await updateUserProfile({ ...user, ...formData });
       const updatedUser = { ...user, ...formData };
       setUser(updatedUser);
-      onUserUpdate(updatedUser);
       setIsEditing(false);
       toast.success('个人信息更新成功');
     } catch (error) {
@@ -68,6 +83,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onL
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   // 移动端布局 - 自然流畅的设计
@@ -258,7 +278,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onL
 
               {/* 退出登录按钮 - 温和的红色 */}
               <button
-                onClick={onLogout}
+                onClick={handleLogout}
                 className="w-full py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-red-500 font-medium bg-white dark:bg-slate-800 flex items-center justify-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
               >
                 <Icons.Logout className="w-4 h-4" />
@@ -336,7 +356,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user: initialUser, onL
               <span className="px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs font-bold rounded-full">Verified</span>
             </div>
             <button
-              onClick={onLogout}
+              onClick={handleLogout}
               className="mt-8 w-full py-2.5 rounded-xl border border-gray-200 dark:border-slate-700 text-red-500 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-100 transition-colors flex items-center justify-center gap-2"
             >
               <Icons.Logout /> 退出登录

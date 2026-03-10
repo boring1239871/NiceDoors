@@ -1,25 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Customer } from '../../types';
 import { useFeedback } from '../common/FeedbackContext';
+import { fetchCustomerList, createCustomer, updateCustomer, deleteCustomer } from '../../api/api';
 
 interface CustomersViewProps {
-    customers: Customer[];
-    onAddCustomer: (customer: Customer) => void;
-    onUpdateCustomer: (customer: Customer) => void;
-    onDeleteCustomer: (id: string) => void;
+    // 不再需要从父组件接收数据
 }
 
-export const CustomersView: React.FC<CustomersViewProps> = ({
-    customers,
-    onAddCustomer,
-    onUpdateCustomer,
-    onDeleteCustomer
-}) => {
+export const CustomersView: React.FC<CustomersViewProps> = () => {
     const { confirm, toast } = useFeedback();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [isMobile, setIsMobile] = useState(false);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     // 检测移动端
     useEffect(() => {
@@ -30,6 +25,26 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // 加载数据
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetchCustomerList();
+                if (res.code === 200) {
+                    setCustomers(res.data);
+                }
+            } catch (error) {
+                console.error('Failed to load customer list data:', error);
+                toast.error('数据加载失败');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, [toast]);
 
     // Form State
     const [formData, setFormData] = useState<Partial<Customer>>({});
@@ -53,36 +68,54 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     };
 
     // 提交表单
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.phone) {
             toast.error('姓名和电话不能为空');
             return;
         }
 
-        if (editingCustomer) {
-            onUpdateCustomer({ ...editingCustomer, ...formData } as Customer);
-            toast.success('客户信息已更新');
-        } else {
-            const newCustomer: Customer = {
-                id: `CUST-${Date.now()}`,
-                createdAt: new Date().toISOString().slice(0, 10),
-                name: formData.name!,
-                phone: formData.phone!,
-                address: formData.address || '',
-                remark: formData.remark || ''
-            };
-            onAddCustomer(newCustomer);
-            toast.success('新客户已添加');
+        try {
+            if (editingCustomer) {
+                const updatedCustomer = { ...editingCustomer, ...formData } as Customer;
+                const res = await updateCustomer(updatedCustomer.id, updatedCustomer);
+                if (res.code === 200) {
+                    setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+                    toast.success('客户信息已更新');
+                }
+            } else {
+                const newCustomer: Customer = {
+                    id: `CUST-${Date.now()}`,
+                    createdAt: new Date().toISOString().slice(0, 10),
+                    name: formData.name!,
+                    phone: formData.phone!,
+                    address: formData.address || '',
+                    remark: formData.remark || ''
+                };
+                const res = await createCustomer(newCustomer);
+                if (res.code === 200) {
+                    setCustomers(prev => [res.data, ...prev]);
+                    toast.success('新客户已添加');
+                }
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Failed to save customer:', error);
+            toast.error('保存失败，请重试');
         }
-        setIsModalOpen(false);
     };
 
     // 删除客户
     const handleDelete = async (id: string) => {
         if (await confirm({ title: '删除客户', content: '确定要删除此客户吗？此操作无法撤销。', isDestructive: true })) {
-            onDeleteCustomer(id);
-            toast.success('客户已删除');
+            try {
+                await deleteCustomer(id);
+                setCustomers(prev => prev.filter(c => c.id !== id));
+                toast.success('客户已删除');
+            } catch (error) {
+                console.error('Failed to delete customer:', error);
+                toast.error('删除失败，请重试');
+            }
         }
     };
 

@@ -344,7 +344,7 @@ const getContractHtml = (order: Order, user: UserProfile): string => {
                     <div style="margin-top: 10px;">日期：</div>
                 </div>
                 <div class="sign-block">
-                    <div><strong>乙方 (供方)：</strong>${user.company || 'Future Windows Ltd.'}</div>
+                    <div><strong>乙方 (供方)：</strong>Future Windows Ltd.</div>
                     <div style="margin-top: 10px;">代表签字 (盖章)：</div>
                     <div class="sign-line"></div>
                     <div style="margin-top: 10px;">日期：</div>
